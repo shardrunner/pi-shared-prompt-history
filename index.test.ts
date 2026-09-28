@@ -21,11 +21,13 @@ test("new snapshots include earlier sessions' prompts, but old snapshots do not 
   }
 });
 
-test("searches the captured snapshot case-insensitively, newest first", () => {
+test("fuzzy-searches the captured snapshot case-insensitively, newest first on ties", () => {
   const snapshot = ["First fix", "unrelated", "Second FIX"];
   assert.deepEqual(searchHistory(snapshot, "fix"), ["Second FIX", "First fix"]);
   assert.deepEqual(searchHistory(snapshot, ""), [...snapshot].reverse());
   assert.deepEqual(searchHistory(snapshot, "missing"), []);
+  assert.deepEqual(searchHistory(snapshot, "unrltd"), ["unrelated"]);
+  assert.deepEqual(searchHistory(snapshot, "sec fx"), ["Second FIX"]);
   assert.deepEqual(snapshot, ["First fix", "unrelated", "Second FIX"]);
 });
 
