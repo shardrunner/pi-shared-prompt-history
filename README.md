@@ -10,10 +10,16 @@ The JSONL file is append-only (one JSON string per line); it is not automaticall
 
 ## Install
 
-Clone this repository and register the checkout as a local Pi package:
+Install from GitHub; Pi clones it and `pi update --extensions` keeps it current:
 
 ```sh
-pi install /absolute/path/to/shared-prompt-history
+pi install git:github.com/shardrunner/pi-shared-prompt-history
+```
+
+For development, register a local checkout instead:
+
+```sh
+pi install /absolute/path/to/pi-shared-prompt-history
 ```
 
 Pi loads a local package in place (no copy) and this package has no runtime
