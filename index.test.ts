@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { appendFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, type TestContext } from "node:test";
@@ -9,6 +9,8 @@ import {
   type ExtensionCommandContext,
   type ExtensionContext,
   type ExtensionHandler,
+  type InputEvent,
+  type InputEventResult,
   type RegisteredCommand,
   type SessionStartEvent,
   type Theme,
@@ -43,6 +45,7 @@ function captureExtension() {
   } as unknown as ExtensionAPI);
   return {
     start: handlers.get("session_start") as ExtensionHandler<SessionStartEvent>,
+    input: handlers.get("input") as ExtensionHandler<InputEvent, InputEventResult>,
     history,
   };
 }
@@ -120,6 +123,20 @@ test("picker heading follows the supplied live theme and fits resized widths wit
   } as unknown as ExtensionCommandContext);
   assert.equal(restored, older);
   assert.equal(editorFactories, 1);
+});
+
+test("records only interactive-source input in TUI mode, not print/JSON default-source input", async (t) => {
+  const path = isolatedHistory(t);
+  const { input } = captureExtension();
+  for (const mode of ["rpc", "print", "json", "tui"] as const) {
+    for (const source of ["rpc", "extension", "interactive"] as const) {
+      const text = `${mode}:${source}`;
+      assert.equal(await input({ type: "input", text, source }, { mode } as ExtensionContext), undefined);
+      const eligible = mode === "tui" && source === "interactive";
+      assert.equal(existsSync(path), eligible, text);
+      assert.deepEqual(readHistory(path), eligible ? [text] : [], text);
+    }
+  }
 });
 
 test("retains only 100 recent nonblank prompts and rejects corrupt history", () => {

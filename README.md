@@ -4,7 +4,7 @@ Loads the last 100 interactive prompts from `~/.pi/agent/shared-prompt-history.j
 
 Use `/history` to open a picker over the snapshot (newest first) and just type to fuzzy-filter it live (best match first; ↑/↓ to move, Enter to pick, Esc to cancel). `/history fix` opens it prefilled with `fix`. Selecting an entry restores it to the editor without submitting it. Search uses the snapshot taken when this session started, not newer prompts from other sessions.
 
-Only interactive agent prompts and `!`/`!!` shell commands are saved. Pi's built-in slash commands, extension commands, and prompts submitted through RPC, print mode, or programmatically are not saved. Existing sessions' prompts are not imported retroactively. New prompts still appear in their own session's normal editor history immediately.
+Only TUI agent prompts with an `interactive` input source and TUI `!`/`!!` shell commands are saved. Pi's built-in slash commands, extension commands, and prompts submitted through RPC, print, or JSON mode are not saved. Programmatic callers bound to TUI mode must label injected prompts with `source: "extension"` to exclude them. Existing sessions' prompts are not imported retroactively. New prompts still appear in their own session's normal editor history immediately.
 
 The JSONL file is append-only (one JSON string per line); it is not automatically pruned on disk. It may contain sensitive inputs. Keep it private or remove it when you no longer need it.
 

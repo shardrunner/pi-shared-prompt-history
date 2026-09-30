@@ -112,8 +112,8 @@ export default function (pi: ExtensionAPI): void {
     },
   });
 
-  pi.on("input", (event) => {
-    if (event.source === "interactive") appendPrompt(historyPath(), event.text);
+  pi.on("input", (event, ctx) => {
+    if (ctx.mode === "tui" && event.source === "interactive") appendPrompt(historyPath(), event.text);
   });
   pi.on("user_bash", (event, ctx) => {
     if (ctx.mode === "tui") appendPrompt(historyPath(), `${event.excludeFromContext ? "!!" : "!"}${event.command}`);
