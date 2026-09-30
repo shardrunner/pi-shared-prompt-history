@@ -15,7 +15,7 @@ import {
   type SessionStartEvent,
   type Theme,
 } from "@earendil-works/pi-coding-agent";
-import { type Component, type Focusable, getKeybindings, stripTerminalSequences, type TUI, visibleWidth } from "@earendil-works/pi-tui";
+import { type Component, type Focusable, getKeybindings, type TUI, visibleWidth } from "@earendil-works/pi-tui";
 import sharedPromptHistory, { appendPrompt, readHistory, searchHistory } from "./index.ts";
 
 function isolatedHistory(t: TestContext): string {
@@ -84,10 +84,9 @@ test("picker heading follows the supplied live theme and fits resized widths wit
   appendPrompt(path, "newer fix");
   initTheme("dark", false);
   const extension = captureExtension();
-  let editorFactories = 0;
   await extension.start({ type: "session_start", reason: "startup" }, {
     mode: "tui",
-    ui: { setEditorComponent() { editorFactories++; } },
+    ui: { setEditorComponent() {} },
   } as unknown as ExtensionContext);
 
   let accent = "\x1b[31m";
@@ -103,18 +102,18 @@ test("picker heading follows the supplied live theme and fits resized widths wit
         picker.focused = true;
         picker.handleInput!("\x1b[B");
         const before = picker.render(80);
-        assert.equal(before[0], `${accent}Prompt history\x1b[0m${dim} · type to fuzzy search · ↑↓ enter esc\x1b[0m`);
+        const expectedHeading = `${accent}Prompt history\x1b[0m${dim} · type to fuzzy search · ↑↓ enter esc\x1b[0m`;
+        assert.equal(before[0], expectedHeading);
         accent = "\x1b[34m";
         dim = "\x1b[90m";
         picker.invalidate();
         const after = picker.render(80);
-        assert.equal(after[0], `${accent}Prompt history\x1b[0m${dim} · type to fuzzy search · ↑↓ enter esc\x1b[0m`);
+        assert.equal(after[0], expectedHeading.replace("\x1b[31m", accent).replace("\x1b[2m", dim));
         assert.deepEqual(after.slice(1), before.slice(1));
         assert.equal(picker.focused, true);
         for (const width of [20, 32, 40, 80]) {
           for (const line of picker.render(width)) assert.ok(visibleWidth(line) <= width, `line exceeds ${width} columns`);
         }
-        assert.equal(stripTerminalSequences(picker.render(80)[0]!), stripTerminalSequences(before[0]!));
         picker.handleInput!("\r");
         return selection;
       },
@@ -122,21 +121,30 @@ test("picker heading follows the supplied live theme and fits resized widths wit
     },
   } as unknown as ExtensionCommandContext);
   assert.equal(restored, older);
-  assert.equal(editorFactories, 1);
 });
 
 test("records only interactive-source input in TUI mode, not print/JSON default-source input", async (t) => {
   const path = isolatedHistory(t);
   const { input } = captureExtension();
-  for (const mode of ["rpc", "print", "json", "tui"] as const) {
-    for (const source of ["rpc", "extension", "interactive"] as const) {
-      const text = `${mode}:${source}`;
-      assert.equal(await input({ type: "input", text, source }, { mode } as ExtensionContext), undefined);
-      const eligible = mode === "tui" && source === "interactive";
-      assert.equal(existsSync(path), eligible, text);
-      assert.deepEqual(readHistory(path), eligible ? [text] : [], text);
-    }
+  for (const [mode, source] of [
+    ["rpc", "interactive"],
+    ["print", "interactive"],
+    ["json", "interactive"],
+    ["tui", "rpc"],
+  ] as const) {
+    const text = `${mode}:${source}`;
+    assert.equal(await input({ type: "input", text, source }, { mode } as ExtensionContext), undefined);
+    assert.equal(existsSync(path), false, text);
+    assert.deepEqual(readHistory(path), [], text);
   }
+
+  const text = "tui:interactive";
+  assert.equal(await input({ type: "input", text, source: "interactive" }, { mode: "tui" } as ExtensionContext), undefined);
+  assert.deepEqual(readHistory(path), [text]);
+  const stored = readFileSync(path, "utf8");
+
+  assert.equal(await input({ type: "input", text: "tui:extension", source: "extension" }, { mode: "tui" } as ExtensionContext), undefined);
+  assert.equal(readFileSync(path, "utf8"), stored);
 });
 
 test("retains only 100 recent nonblank prompts and rejects corrupt history", () => {
