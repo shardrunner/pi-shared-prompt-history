@@ -1,7 +1,7 @@
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { CustomEditor, getAgentDir, getSelectListTheme, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { type Component, type Focusable, fuzzyFilter, Input, type KeybindingsManager, SelectList } from "@earendil-works/pi-tui";
+import { type Component, type Focusable, fuzzyFilter, Input, type KeybindingsManager, SelectList, truncateToWidth } from "@earendil-works/pi-tui";
 
 const HISTORY_LIMIT = 100;
 const historyPath = () => join(getAgentDir(), "shared-prompt-history.jsonl");
@@ -33,7 +33,7 @@ export function searchHistory(snapshot: readonly string[], query: string): strin
 function historyPicker(
   snapshot: readonly string[],
   query: string,
-  title: string,
+  renderTitle: () => string,
   keybindings: KeybindingsManager,
   done: (prompt: string | undefined) => void,
 ): Component & Focusable {
@@ -68,7 +68,7 @@ function historyPicker(
       list.invalidate();
     },
     render(width) {
-      return [title, ...input.render(width), ...list.render(width)];
+      return [truncateToWidth(renderTitle(), width), ...input.render(width), ...list.render(width)];
     },
   };
 }
@@ -105,8 +105,8 @@ export default function (pi: ExtensionAPI): void {
       }
       const snapshot = currentSnapshot;
       const selection = await ctx.ui.custom<string | undefined>((_tui, theme, keybindings, done) => {
-        const title = theme.fg("accent", "Prompt history") + theme.fg("dim", " · type to fuzzy search · ↑↓ enter esc");
-        return historyPicker(snapshot, query, title, keybindings, done);
+        const renderTitle = () => theme.fg("accent", "Prompt history") + theme.fg("dim", " · type to fuzzy search · ↑↓ enter esc");
+        return historyPicker(snapshot, query, renderTitle, keybindings, done);
       });
       if (selection !== undefined) ctx.ui.setEditorText(selection);
     },

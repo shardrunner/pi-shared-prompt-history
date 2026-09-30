@@ -2,8 +2,50 @@ import assert from "node:assert/strict";
 import { appendFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "node:test";
-import { appendPrompt, readHistory, searchHistory } from "./index.ts";
+import { test, type TestContext } from "node:test";
+import {
+  initTheme,
+  type ExtensionAPI,
+  type ExtensionCommandContext,
+  type ExtensionContext,
+  type ExtensionHandler,
+  type RegisteredCommand,
+  type SessionStartEvent,
+  type Theme,
+} from "@earendil-works/pi-coding-agent";
+import { type Component, type Focusable, getKeybindings, stripTerminalSequences, type TUI, visibleWidth } from "@earendil-works/pi-tui";
+import sharedPromptHistory, { appendPrompt, readHistory, searchHistory } from "./index.ts";
+
+function isolatedHistory(t: TestContext): string {
+  const dir = mkdtempSync(join(tmpdir(), "pi-history-"));
+  const previous = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = dir;
+  t.after(() => {
+    if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = previous;
+    rmSync(dir, { recursive: true, force: true });
+  });
+  return join(dir, "shared-prompt-history.jsonl");
+}
+
+function captureExtension() {
+  const handlers = new Map<string, unknown>();
+  let history!: RegisteredCommand;
+  sharedPromptHistory({
+    on(event: string, handler: unknown) {
+      handlers.set(event, handler);
+      return () => {};
+    },
+    registerCommand(name: string, command: RegisteredCommand) {
+      assert.equal(name, "history");
+      history = command;
+    },
+  } as unknown as ExtensionAPI);
+  return {
+    start: handlers.get("session_start") as ExtensionHandler<SessionStartEvent>,
+    history,
+  };
+}
 
 test("new snapshots include earlier sessions' prompts, but old snapshots do not change", () => {
   const dir = mkdtempSync(join(tmpdir(), "pi-history-"));
@@ -29,6 +71,55 @@ test("fuzzy-searches the captured snapshot case-insensitively, newest first on t
   assert.deepEqual(searchHistory(snapshot, "unrltd"), ["unrelated"]);
   assert.deepEqual(searchHistory(snapshot, "sec fx"), ["Second FIX"]);
   assert.deepEqual(snapshot, ["First fix", "unrelated", "Second FIX"]);
+});
+
+test("picker heading follows the supplied live theme and fits resized widths without losing state", async (t) => {
+  const path = isolatedHistory(t);
+  const older = "older fix 界🙂\nfull prompt";
+  appendPrompt(path, older);
+  appendPrompt(path, "unrelated");
+  appendPrompt(path, "newer fix");
+  initTheme("dark", false);
+  const extension = captureExtension();
+  let editorFactories = 0;
+  await extension.start({ type: "session_start", reason: "startup" }, {
+    mode: "tui",
+    ui: { setEditorComponent() { editorFactories++; } },
+  } as unknown as ExtensionContext);
+
+  let accent = "\x1b[31m";
+  let dim = "\x1b[2m";
+  const theme = { fg: (role: string, text: string) => `${role === "accent" ? accent : dim}${text}\x1b[0m` } as Theme;
+  let restored: string | undefined;
+  await extension.history.handler("fix", {
+    mode: "tui",
+    ui: {
+      async custom(factory: Parameters<ExtensionContext["ui"]["custom"]>[0]) {
+        let selection: unknown;
+        const picker = await factory({} as TUI, theme, getKeybindings() as Parameters<typeof factory>[2], (value) => { selection = value; }) as Component & Focusable;
+        picker.focused = true;
+        picker.handleInput!("\x1b[B");
+        const before = picker.render(80);
+        assert.equal(before[0], `${accent}Prompt history\x1b[0m${dim} · type to fuzzy search · ↑↓ enter esc\x1b[0m`);
+        accent = "\x1b[34m";
+        dim = "\x1b[90m";
+        picker.invalidate();
+        const after = picker.render(80);
+        assert.equal(after[0], `${accent}Prompt history\x1b[0m${dim} · type to fuzzy search · ↑↓ enter esc\x1b[0m`);
+        assert.deepEqual(after.slice(1), before.slice(1));
+        assert.equal(picker.focused, true);
+        for (const width of [20, 32, 40, 80]) {
+          for (const line of picker.render(width)) assert.ok(visibleWidth(line) <= width, `line exceeds ${width} columns`);
+        }
+        assert.equal(stripTerminalSequences(picker.render(80)[0]!), stripTerminalSequences(before[0]!));
+        picker.handleInput!("\r");
+        return selection;
+      },
+      setEditorText(text: string) { restored = text; },
+    },
+  } as unknown as ExtensionCommandContext);
+  assert.equal(restored, older);
+  assert.equal(editorFactories, 1);
 });
 
 test("retains only 100 recent nonblank prompts and rejects corrupt history", () => {
