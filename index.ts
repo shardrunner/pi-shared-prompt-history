@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { CustomEditor, getAgentDir, getSelectListTheme, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { getAgentDir, getSelectListTheme, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { type Component, type Focusable, fuzzyFilter, Input, type KeybindingsManager, SelectList, truncateToWidth } from "@earendil-works/pi-tui";
 
 const HISTORY_LIMIT = 100;
@@ -85,14 +85,8 @@ export default function (pi: ExtensionAPI): void {
   let currentSnapshot: string[] = [];
   pi.on("session_start", (_event, ctx) => {
     if (ctx.mode !== "tui") return;
-    // Capture once. Never re-read when an already-open editor handles Up.
-    const snapshot = readHistory(historyPath());
-    currentSnapshot = snapshot;
-    ctx.ui.setEditorComponent((tui, theme, keybindings) => {
-      const editor = new CustomEditor(tui, theme, keybindings);
-      for (const prompt of snapshot) editor.addToHistory(prompt);
-      return editor;
-    });
+    // Capture once for /history; an open session keeps its own snapshot.
+    currentSnapshot = readHistory(historyPath());
   });
 
   pi.registerCommand("history", {
