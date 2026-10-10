@@ -7,6 +7,11 @@ read_when:
 
 # Command-only shared history validation
 
+The implementation and live TUI results below were recorded for shared history
+`42756c8` and modal `cc3c66b` (whose production code matched `5deffd3`). Later modal
+simplifications are separate changes; the original test counts and live results
+are not a fresh validation of those revisions. See the final review below.
+
 Implemented the boundary requested in `handoff-command-only-history.md`:
 shared history records eligible prompts, captures a fixed session-start snapshot,
 and replaces the draft only after a `/history` selection. It no longer imports
@@ -98,3 +103,25 @@ tests deliberately cannot detect that host lifecycle ordering problem.
 that separate host/modal issue requires user approval. No private-history copying,
 shared-seeding fallback, or modal production-code redesign was added.
 Historical oracle reviews remain untouched and untracked. Nothing was pushed.
+
+## Final focused review
+
+Re-read the shared-history production diff, picker regressions, and real-package
+integration coverage, initially against modal's newer `987ec68` checkout. No shared-history
+production correction was needed: the change only removes editor ownership and
+seeding, adds no hot-path work, and leaves recording and picker behavior alone.
+The later modal simplifications were preserved, not included in this refactor.
+
+Corrected one integration-test instrumentation gap: before invoking `/history`,
+attribute UI access to the shared-history extension rather than the last dispatched
+startup handler. This ensures the forbidden-editor-read assertion also covers
+lookup in history-first order. This review did not change production code.
+
+While the review was in progress, concurrent modal commit `1f9cee7` incorporated
+that instrumentation correction and separately added native-history restoration.
+Those independent production changes were preserved, not implemented as part of
+this review. After the review edits, both `npm run check` commands passed: shared
+history **9 tests**, current modal **86 tests**, including both real-package load
+orders. TypeScript and whitespace checks passed in both repositories. The earlier
+live TUI reproduction above remains historical; it was not repeated against the
+new modal lifecycle fix, so this review makes no fresh live-TUI claim about it.
