@@ -12,7 +12,7 @@ The implementation and live TUI results below were recorded for shared history
 simplifications are separate changes; the original test counts and live results
 are not a fresh validation of those revisions. See the final review below.
 
-Implemented the boundary requested in `handoff-command-only-history.md`:
+Implemented the requested command-only boundary:
 shared history records eligible prompts, captures a fixed session-start snapshot,
 and replaces the draft only after a `/history` selection. It no longer imports
 `CustomEditor`, installs an editor factory, or seeds native Up/Down history.
@@ -102,7 +102,8 @@ tests deliberately cannot detect that host lifecycle ordering problem.
 **Do not claim native session history is preserved on all transitions.** Fixing
 that separate host/modal issue requires user approval. No private-history copying,
 shared-seeding fallback, or modal production-code redesign was added.
-Historical oracle reviews remain untouched and untracked. Nothing was pushed.
+Historical oracle reviews were preserved during implementation, then deleted
+along with the completed handoff after explicit user approval. Nothing was pushed.
 
 ## Final focused review
 
