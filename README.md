@@ -1,5 +1,7 @@
 # Shared prompt history
 
+> **Disclaimer:** This extension is vibe coded. Use at your own risk.
+
 Search saved prompts across sessions with `/history`. Each TUI session start (startup, new, resume, fork, or reload) captures the last 100 entries from `~/.pi/agent/shared-prompt-history.jsonl` for the picker. Submissions from other Pi processes do **not** update an already-open session's snapshot. The file is shared across working directories, not sent to the model, and created with permissions `0600`.
 
 Native Up/Down editor history is separate and untouched by this extension. Shared prompts are not imported into it, and this package never replaces the prompt editor or installs editor key handlers. It can load before or after `pi-modal-editor`.
