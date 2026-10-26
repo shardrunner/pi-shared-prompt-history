@@ -31,6 +31,12 @@
     "@earendil-works/pi-coding-agent": "*",
     "@earendil-works/pi-tui": "*"
   },
+  "overrides": {
+    "@earendil-works/pi-coding-agent": {
+      "brace-expansion": "5.0.12",
+      "undici": "8.12.3"
+    }
+  },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "0.99.0",
     "@earendil-works/pi-tui": "0.99.0",
