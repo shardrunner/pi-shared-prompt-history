@@ -1,8 +1,10 @@
 # Shared prompt history
 
-> **Disclaimer:** This extension is vibe coded for personal use. Use at your own risk.
+Find and reuse prompts from other [Pi](https://pi.dev) sessions with `/history`,
+without mixing them into the editor's native Up/Down history or submitting them
+automatically.
 
-Search saved prompts across sessions with `/history`. Each TUI session start (startup, new, resume, fork, or reload) captures the last 100 entries from `~/.pi/agent/shared-prompt-history.jsonl` for the picker. Submissions from other Pi processes do **not** update an already-open session's snapshot. The file is shared across working directories, not sent to the model, and created with permissions `0600`.
+Each TUI session start (startup, new, resume, fork, or reload) captures the last 100 entries from `~/.pi/agent/shared-prompt-history.jsonl` for the picker. Submissions from other Pi processes do **not** update an already-open session's snapshot. The file is shared across working directories, not sent to the model, and created with permissions `0600`.
 
 Native Up/Down editor history is separate and untouched by this extension. Shared prompts are not imported into it, and this package never replaces the prompt editor or installs editor key handlers. It can load before or after `pi-modal-editor`.
 
@@ -29,6 +31,11 @@ pi install /absolute/path/to/pi-shared-prompt-history
 Pi loads a local package in place (no copy) and this package has no runtime
 dependencies, so no `npm install` is needed to use it. Run `/reload` in existing
 Pi instances.
+
+## Project status
+
+Developed with AI assistance for personal use. Provided as-is, without support or
+compatibility guarantees. Review the source and documented limitations before use.
 
 ## Test
 
